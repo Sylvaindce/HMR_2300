@@ -4,6 +4,7 @@ Python3 software
 
 Python code allowing the communication between a PC and a magnetometer through communication port
 
+Main library used : pyserial and numpy
 
 Usage:
 
@@ -28,3 +29,6 @@ Bonus:
 
  - Write CSV
  - Send CSV by mail
+
+Troubleshoot :
+ - if the magnetometer is not listed, execute chmod on the proper tty ( ex: sudo chmod 777 /dev/ttyUSB0 )

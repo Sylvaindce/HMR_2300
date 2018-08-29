@@ -3,7 +3,7 @@ Created on Tue Jan 23 13:44:05 2018
 @author: Sylvain Decombe
 """
 
-import sys, os, glob, pathlib, time, datetime, io, csv, serial, binascii, numpy, smtplib, random
+import sys, os, glob, pathlib, time, datetime, io, csv, serial, binascii, numpy, re, smtplib, random
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -110,7 +110,7 @@ class Utils:
         return result
 
     @staticmethod
-    def write_csv_file(tab, send_mail=True):
+    def write_csv_file(tab, send_mail=False):
         path = str(os.getcwd())
         date_str = datetime.datetime.today().strftime("%Y-%m-%d_%H%M")
         file_path = os.path.join(path, "magnetometer_data_" + date_str + ".csv")
@@ -173,7 +173,7 @@ class Utils:
 
 class Magnetometer:
 
-    def __init__(self, baudrate=9600, timeout=2, data_format="ascii"):
+    def __init__(self, baudrate=9600, timeout=2, data_format="binary"):
         self.init_sleep = 0.05
         self.tab = []
         self.__baudrate = baudrate
@@ -273,23 +273,25 @@ class Magnetometer:
             return None
         if self.__format == "binary":
             answer = binascii.hexlify(answer)
-            hexLine = [answer[:4], answer[4:8], answer[8:12]]
+            hexa = [answer[:4], answer[4:8], answer[8:12]]
             try:
-                decLine = [int(hexLine[0], 16), int(hexLine[1], 16), int(hexLine[2], 16)]
+                decimal = [int(hexa[0], 16), int(hexa[1], 16), int(hexa[2], 16)]
                 for j in range(0, 3):
-                    if decLine[j] >= 35536:
-                        decLine[j] -= 65536
-                    decLine[j] = numpy.around(decLine[j] * 0.006667, 10)
-                #BUG Y value not the same on ascii
-                x, y, z = decLine[0], decLine[1], decLine[2]
+                    if decimal[j] >= 35536:
+                        decimal[j] -= 65536
+                    decimal[j] = numpy.around(decimal[j] * 0.006667, 10)
+                x, y, z = decimal[0], decimal[1], decimal[2]
             except:
                 return None
         else:
             answer = answer.decode("utf-8")
             answer = answer.replace("\r", "")
-            x = (float(answer[:7].replace("- ", "-").replace("  ", "").replace(",", "")) / 150)
-            y = (float(answer[9:15].replace("- ", "-").replace(" ", "").replace(",", "")) / 150)
-            z = (float(answer[18:25].replace("- ", "-").replace(" ", "").replace(",", "")) / 150)
+            x = re.sub("[ ,]", '', answer[:7])
+            x = (float(x) / 150)
+            y = re.sub("[ ,]", '', answer[9:16])
+            y = (float(y) / 150)
+            z = re.sub("[ ,]", '', answer[18:25])
+            z = (float(z) / 150)
        
         result = []
         result.append(x)
@@ -300,7 +302,7 @@ class Magnetometer:
 
     def close_com(self):
         print("exit")
-        self.__ser.write(chr(27).encode())
+        self.__ser.write(self.__api.esc_cmd())
         self.__ser.close()
         Utils.write_csv_file(self.tab)
         exit()  
